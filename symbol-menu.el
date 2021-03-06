@@ -8,17 +8,24 @@
 This will make entry initialization much slower, especially for `list-functions',
 which generally has more than 15k entries.")
 
+(defvar symbol-menu--nil-entry-id nil
+  "ID for `nil' symbol.
+
+This is a workaround to prevent tablist-minor-mode reports error for not finding
+entry for `nil'")
+
 (defun symbol-menu--collect-entries (kind)
   (let ((filter (cond ((eq kind 'function) #'functionp)
                       ((eq kind 'variable) (lambda (x)
                                              (and (boundp x) (not (keywordp x)))))
-                      (t (error (format "Unrecognized symbol query ~s" (symbol-name kind))))))
+                      (t (error (format "Unrecognized symbol query ~s"
+                                        (symbol-name kind))))))
         (entries nil))
     (mapatoms (lambda (x)
                 (when (funcall filter x)
-                  (add-to-list
-                   'entries
-                   `(,x [,(symbol-name x) ,(short-doc x kind)])))))
+                  (push `(,(or x 'symbol-menu--nil-entry-id)
+                          [,(symbol-name x) ,(short-doc x kind)])
+                        entries))))
     entries))
 
 (defun short-doc (sym kind)

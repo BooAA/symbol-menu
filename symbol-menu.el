@@ -8,12 +8,6 @@
 This will make entry initialization much slower, especially for `list-functions',
 which generally has more than 15k entries.")
 
-(defvar symbol-menu--nil-entry-id nil
-  "ID for `nil' symbol.
-
-This is a workaround to prevent tablist-minor-mode reports error for not finding
-entry for `nil'")
-
 (defun symbol-menu--collect-entries (kind)
   (let ((filter (cond ((eq kind 'function) #'functionp)
                       ((eq kind 'variable) (lambda (x)
@@ -23,7 +17,10 @@ entry for `nil'")
         (entries nil))
     (mapatoms (lambda (x)
                 (when (funcall filter x)
-                  (push `(,(or x 'symbol-menu--nil-entry-id)
+                  ;; we cannot directly use nil as ID, which confuse
+                  ;; `tabulated-list-get-id' between empty ID entry and
+                  ;; ID for symbol nil.
+                  (push `(,(or x "nil")
                           [,(symbol-name x) ,(short-doc x kind)])
                         entries))))
     entries))
@@ -41,10 +38,14 @@ entry for `nil'")
          (end (string-match "[\\.\\?!\n]" doc start)))
     (substring doc start end)))
 
+(defun symbol-menu--get-id ()
+  (let ((id (tabulated-list-get-id)))
+    (if (equal id "nil") nil id)))
+
 (defun symbol-menu-find-definitions ()
   (interactive)
   (let ((xref-backend-functions '(elisp--xref-backend t)))
-    (xref-find-definitions (tabulated-list-get-id))))
+    (xref-find-definitions (symbol-menu--get-id))))
 
 (defun function-menu-describe ()
   (interactive)
@@ -81,7 +82,7 @@ entry for `nil'")
 
 (defun variable-menu-describe ()
   (interactive)
-  (describe-variable (tabulated-list-get-id)))
+  (describe-variable (symbol-menu--get-id)))
 
 (defvar variable-menu-mode-map
   (let ((map (make-sparse-keymap)))
